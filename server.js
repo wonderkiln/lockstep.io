@@ -1,6 +1,6 @@
 var app = require('http').createServer(handler)
 var io  = require('socket.io')(app);
-var lockstepio = require('./lockstepio.js')(io);
+var lockstepio = require('lockstepio')(io); //require('./lockstepio.js')(io);
 
 app.listen(80);
 
