@@ -82,10 +82,10 @@ public class LockstepIO : MonoBehaviour
 		SyncRoundTrips = new List<long>();
 		CommandQueue = new Dictionary<long, JSONObject>();
 		Socket = GetComponent<SocketIOComponent>();
-		Socket.On ("lockstepio:seed", OnLockstepSeed);
-		Socket.On ("lockstepio:sync", OnLockstepSync);
-		Socket.On ("lockstepio:ready", OnLockstepReady);
-		Socket.On ("lockstepio:cmd:issue", OnCommandIssue);
+		Socket.On ("lockstep.io:seed", OnLockstepSeed);
+		Socket.On ("lockstep.io:sync", OnLockstepSync);
+		Socket.On ("lockstep.io:ready", OnLockstepReady);
+		Socket.On ("lockstep.io:cmd:issue", OnCommandIssue);
 		InvokeRepeating("LockstepSync", 0f, SyncRateSec);
 	}
 	
@@ -100,8 +100,8 @@ public class LockstepIO : MonoBehaviour
 	{
 		JSONObject ntp = JSONObject.Create(JSONObject.Type.OBJECT);
 		ntp.AddField("t0", (double)LocalNow);
-		Socket.Emit("lockstepio:sync", ntp);
-		Socket.Emit("lockstepio:seed", new JSONObject());
+		Socket.Emit("lockstep.io:sync", ntp);
+		Socket.Emit("lockstep.io:seed", new JSONObject());
 	}
 	
 	private void OnLockstepSync(SocketIOEvent evt)
@@ -132,7 +132,7 @@ public class LockstepIO : MonoBehaviour
 			ready.AddField("offset", (double)LastSyncOffset);
 			ready.AddField("roundTrip", (double)LastSyncRoundTrip);
 			ready.AddField("lockstep", (double)LockStepTime);
-			Socket.Emit("lockstepio:ready", ready);
+			Socket.Emit("lockstep.io:ready", ready);
 		}
 	}
 	
@@ -194,6 +194,6 @@ public class LockstepIO : MonoBehaviour
 	public void IssueCommand(JSONObject Command)
 	{
 		Command.AddField("atLockstep", (double)(LockStepTime + CommandDelay));
-		Socket.Emit("lockstepio:cmd:issue", Command);
+		Socket.Emit("lockstep.io:cmd:issue", Command);
 	}
 }

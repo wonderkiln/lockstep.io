@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/InkhornGames/lockstep.io/issues"
   },
-  "homepage": "https://github.com/InkhornGames/lockstep.io"
+  "homepage": "https://github.com/InkhornGames/lockstep.io",
+  "dependencies": {
+    "socket.io": "^1.3.5"
+  }
 }
