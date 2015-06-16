@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System;
 
-public class Checksum 
+public class checksum_io 
 {
 	public static UInt64 Hash(string str)
 	{

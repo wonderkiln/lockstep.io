@@ -52,7 +52,7 @@ module.exports = function (io) {
 
 				console.log(ready);
 				if (ready.roundTrip * 3 > ref.commandDelay) {
-					ref.commandDelay = ready.roundTrip;
+					ref.commandDelay = ready.roundTrip * 3;
 				}
 
 				ref.sockets[socket.id].sync = ready;

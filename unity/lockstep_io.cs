@@ -5,15 +5,15 @@ using SocketIO;
 using System;
 using System.Text;
 
-public class LockstepIO : MonoBehaviour 
+[RequireComponent (typeof (SocketIOComponent))]
+public class lockstep_io : MonoBehaviour 
 {
 	private SocketIOComponent Socket;
 	private List<long> SyncOffsets;
 	private List<long> SyncRoundTrips;
 	private Dictionary<long, JSONObject> CommandQueue;
-	private float SyncRateSec = 1f / 60f;
-	private int SyncPoolSize = 10;
-	private DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+	private float SyncRateSec = 1f / 15f;
+	private int SyncPoolSize = 15;
 	public delegate void ExecuteCommandSignature (JSONObject Command);
 	public ExecuteCommandSignature ExecuteCommandFunction;
 	public string LastLockstepReadyString;
@@ -72,6 +72,13 @@ public class LockstepIO : MonoBehaviour
 				return false;
 			}
 		}
+	}
+	
+	public void Start()
+	{
+		Sync ((JSONObject j) => {
+			Debug.Log(j.ToString());
+		});
 	}
 
 	
@@ -138,15 +145,17 @@ public class LockstepIO : MonoBehaviour
 	
 	private void OnLockstepReady(SocketIOEvent evt)
 	{
+		CommandDelay = (long)evt.data.GetField("commandDelay").n;
+		JSONObject clients = evt.data.GetField("clients");
 		string format = "000000000000";
 		int formatLength = format.Length + 1;
-		
 		string debugText = "ID".PadLeft(formatLength)        + " "    +
 			               "OFFSET".PadLeft(formatLength)    + " "    + 
 				           "ROUNDTRIP".PadLeft(formatLength) + " "    +
-				           "LOCKSTEP".PadLeft(formatLength)  + "\n\r";
-		JSONObject clients = evt.data.GetField("clients");
-		CommandDelay = (long)evt.data.GetField("commandDelay").n;
+				           "LOCKSTEP".PadLeft(formatLength)  + " "    +
+				           "(CDELAY: " + CommandDelay.ToString() +  ")\n\r";
+		
+		
 		for (int key = 0; key < clients.keys.Count; key++)
 		{
 			debugText += clients.keys[key].Substring(0, 8).PadLeft(formatLength)                                   + " "    +
@@ -156,6 +165,7 @@ public class LockstepIO : MonoBehaviour
 			
 		}
 		LastLockstepReadyString = debugText;
+		Debug.Log(LastLockstepReadyString);
 	}
 
 	private void OnCommandIssue(SocketIOEvent evt)
