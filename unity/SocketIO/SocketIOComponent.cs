@@ -63,13 +63,13 @@ namespace SocketIO
         public string     EventName;
         public JSONObject EventData;
 
-        public SocketIOEvent(string eventName, JSONObject eventData)
+        public SocketIOEvent (string eventName, JSONObject eventData)
         {
             this.EventName = eventName;
             this.EventData = eventData;
         }
 
-        public override string ToString()
+        public override string ToString ()
         {
             return string.Format("[SocketIOEvent: name={0}, data={1}]", EventName, EventData);
         }
@@ -86,12 +86,12 @@ namespace SocketIO
         
         public Packet(EnginePacketType enginePacketType, SocketPacketType socketPacketType, int packetAttachementsCount, string packetNamespace, int packetID, JSONObject packetData)
         {
-            this.EnginePacketType = enginePacketType;
-            this.SocketPacketType = socketPacketType;
+            this.EnginePacketType       = enginePacketType;
+            this.SocketPacketType       = socketPacketType;
             this.PacketAttachmentsCount = packetAttachementsCount;
-            this.PacketNamespace = packetNamespace;
-            this.PacketID = packetID;
-            this.PacketData = packetData;
+            this.PacketNamespace        = packetNamespace;
+            this.PacketID               = packetID;
+            this.PacketData             = packetData;
         }
         
         public override string ToString()
@@ -100,219 +100,49 @@ namespace SocketIO
         }
     }
     
-    public class Encoder
-    {
-        public string Encode(Packet packet)
-        {
-            try
-            {
-                #if SOCKET_IO_DEBUG
-                Debug.Log("[SocketIO] Encoding: " + packet.json);
-                #endif
-                
-                StringBuilder builder = new StringBuilder();
-                
-                // first is type
-                builder.Append((int)packet.EnginePacketType);
-                if(!packet.EnginePacketType.Equals(EnginePacketType.MESSAGE)){
-                    return builder.ToString();
-                }
-                
-                builder.Append((int)packet.SocketPacketType);
-                
-                // attachments if we have them
-                if (packet.SocketPacketType == SocketPacketType.BINARY_EVENT || packet.SocketPacketType == SocketPacketType.BINARY_ACK) {
-                    builder.Append(packet.PacketAttachmentsCount);
-                    builder.Append('-');
-                }
-                
-                // if we have a namespace other than '/'
-                // we append it followed by a comma ','
-                if (!string.IsNullOrEmpty(packet.PacketNamespace) && !packet.PacketNamespace.Equals("/")) {
-                    builder.Append(packet.PacketNamespace);
-                    builder.Append(',');
-                }
-                
-                // immediately followed by the id
-                if (packet.PacketID > -1) {
-                    builder.Append(packet.PacketID);
-                }
-                
-                if (packet.PacketData != null && !packet.PacketData.ToString().Equals("null")) {
-                    builder.Append(packet.PacketData.ToString());
-                }
-                
-                #if SOCKET_IO_DEBUG
-                Debug.Log("[SocketIO] Encoded: " + builder);
-                #endif
-                
-                return builder.ToString();
-                
-            } catch(Exception ex) {
-                throw new Exception("Packet encoding failed: " + packet ,ex);
-            }
-        }
-    }
-    
-    public class Decoder
-    {
-        public Packet Decode(MessageEventArgs e)
-        {
-            try
-            {
-                #if SOCKET_IO_DEBUG
-                Debug.Log("[SocketIO] Decoding: " + e.Data);
-                #endif
-                
-                string data = e.Data;
-				Packet packet = new Packet(EnginePacketType.UNKNOWN, SocketPacketType.UNKNOWN, -1, "/", -1, null);
-                int offset = 0;
-                
-                // look up packet type
-                int enginePacketType = int.Parse(data.Substring(offset, 1));
-                packet.EnginePacketType = (EnginePacketType)enginePacketType;
-                
-                if (enginePacketType == (int)EnginePacketType.MESSAGE) {
-                    int socketPacketType = int.Parse(data.Substring(++offset, 1));
-                    packet.SocketPacketType = (SocketPacketType)socketPacketType;
-                }
-                
-                // connect message properly parsed
-                if (data.Length <= 2) {
-                    #if SOCKET_IO_DEBUG
-                    Debug.Log("[SocketIO] Decoded: " + packet);
-                    #endif
-                    return packet;
-                }
-                
-                // look up namespace (if any)
-                if ('/' == data [offset + 1]) {
-                    StringBuilder builder = new StringBuilder();
-                    while (offset < data.Length - 1 && data[++offset] != ',') {
-                        builder.Append(data [offset]);
-                    }
-                    packet.PacketNamespace = builder.ToString();
-                } else {
-                    packet.PacketNamespace = "/";
-                }
-                
-                // look up id
-                char next = data [offset + 1];
-                if (next != ' ' && char.IsNumber(next)) {
-                    StringBuilder builder = new StringBuilder();
-                    while (offset < data.Length - 1) {
-                        char c = data [++offset];
-                        if (char.IsNumber(c)) {
-                            builder.Append(c);
-                        } else {
-                            --offset;
-                            break;
-                        }
-                    }
-                    packet.PacketID = int.Parse(builder.ToString());
-                }
-                
-                // look up json data
-                if (++offset < data.Length - 1) {
-                    try {
-                        #if SOCKET_IO_DEBUG
-                        Debug.Log("[SocketIO] Parsing JSON: " + data.Substring(offset));
-                        #endif
-                        packet.PacketData = new JSONObject(data.Substring(offset));
-                    } catch (Exception ex) {
-                        Debug.LogException(ex);
-                    }
-                }
-                
-                #if SOCKET_IO_DEBUG
-                Debug.Log("[SocketIO] Decoded: " + packet);
-                #endif
-                
-                return packet;
-                
-            } catch(Exception ex) {
-                throw new Exception("Packet decoding failed: " + e.Data ,ex);
-            }
-        }
-    }
-
-
     public class SocketIOComponent : MonoBehaviour
     {
-
-        #region Public Properties
-    
-        public bool useLocal = true;
-        public bool autoConnect = true;
-        public int reconnectDelay = 5;
-        public float ackExpirationTime = 1800f;
-        public float pingInterval = 25f;
-        public float pingTimeout = 60f;
-        
-
-        public WebSocket socket { get { return ws; } }
-        public string sid { get; set; }
-        public bool IsConnected { get { return connected; } }
-
-        #endregion
-
-        #region Private Properties
-        private string CLOUDURL = "ws://52.5.116.134:80/socket.io/?EIO=4&transport=websocket";
-        private string LOCALURL = "ws://127.0.0.1:80/socket.io/?EIO=4&transport=websocket";
-        private volatile bool connected;
-        private volatile bool thPinging;
-        private volatile bool thPong;
-        private volatile bool wsConnected;
-
-        private Thread socketThread;
-        private Thread pingThread;
-        private WebSocket ws;
-
-        private Encoder encoder;
-        private Decoder decoder;
-
-        private Dictionary<string, List<Action<SocketIOEvent>>> handlers;
-        private List<Ack> ackList;
-
-        private int packetId;
-
-        private object eventQueueLock;
-        private Queue<SocketIOEvent> eventQueue;
-
-        private object ackQueueLock;
-        private Queue<Packet> ackQueue;
-
-        #endregion
-
-        #if SOCKET_IO_DEBUG
-        public Action<string> debugMethod;
-        #endif
-
-        #region Unity interface
+        public bool                  UseLocal          = true;
+        public bool                  AutoConnect       = true;
+        public int                   ReconnectDelay    = 5;
+        public float                 AckExpirationTime = 1800f;
+        public float                 PingInterval      = 25f;
+        public float                 PingTimeout       = 60f;
+        public string                CloudURL = "ws://52.5.116.134:80/socket.io/?EIO=4&transport=websocket";
+        public string                LocalURL = "ws://127.0.0.1:80/socket.io/?EIO=4&transport=websocket";
+        public string                SocketID;
+        public int                   PacketID;
+        public volatile bool         TransportConnected;
+        public volatile bool         Pinging;
+        public volatile bool         Pong;
+        public volatile bool         WebSocketConnected;
+		public WebSocket             Socket;
+        private Thread               SocketThread;
+        private Thread               PingThread;
+        private object               EventQueueLock;
+        private object               AckQueueLock;
+        private Queue<SocketIOEvent> EventQueue;
+        private Queue<Packet>        AckQueue;
+        private List<Ack>            AckList;
+		private Dictionary<string, List<Action<SocketIOEvent>>> SocketEventHandlers;
 
         public void Awake()
         {
-            encoder = new Encoder();
-            decoder = new Decoder();
-            handlers = new Dictionary<string, List<Action<SocketIOEvent>>>();
-            ackList = new List<Ack>();
-            sid = null;
-            packetId = 0;
-
-            ws = new WebSocket(useLocal ? LOCALURL : CLOUDURL);
-            ws.OnOpen += OnOpen;
-            ws.OnMessage += OnMessage;
-            ws.OnError += OnError;
-            ws.OnClose += OnClose;
-            wsConnected = false;
-
-            eventQueueLock = new object();
-            eventQueue = new Queue<SocketIOEvent>();
-
-            ackQueueLock = new object();
-            ackQueue = new Queue<Packet>();
-
-            connected = false;
+            SocketEventHandlers = new Dictionary<string, List<Action<SocketIOEvent>>>();
+            AckList             = new List<Ack>();
+            SocketID            = null;
+            PacketID            = 0;
+            Socket              = new WebSocket(UseLocal ? LocalURL : CloudURL);
+            Socket.OnOpen       += OnOpen;
+            Socket.OnMessage    += OnMessage;
+            Socket.OnError      += OnError;
+            Socket.OnClose      += OnClose;
+            WebSocketConnected  = false;
+            EventQueueLock      = new object();
+            AckQueueLock        = new object();
+            EventQueue          = new Queue<SocketIOEvent>();
+            AckQueue            = new Queue<Packet>();
+            TransportConnected  = false;
 
             #if SOCKET_IO_DEBUG
             if(debugMethod == null) { debugMethod = Debug.Log; };
@@ -321,26 +151,26 @@ namespace SocketIO
 
         public void Start()
         {
-            if (autoConnect) { Connect(); }
+            if (AutoConnect) { Connect(); }
         }
 
         public void Update()
         {
-            lock(eventQueueLock){ 
-                while(eventQueue.Count > 0){
-                    EmitEvent(eventQueue.Dequeue());
+            lock(EventQueueLock){ 
+                while(EventQueue.Count > 0){
+                    EmitEvent(EventQueue.Dequeue());
                 }
             }
 
-            lock(ackQueueLock){
-                while(ackQueue.Count > 0){
-                    InvokeAck(ackQueue.Dequeue());
+            lock(AckQueueLock){
+                while(AckQueue.Count > 0){
+                    InvokeAck(AckQueue.Dequeue());
                 }
             }
 
-            if(wsConnected != ws.IsConnected){
-                wsConnected = ws.IsConnected;
-                if(wsConnected){
+            if(WebSocketConnected != Socket.IsConnected){
+                WebSocketConnected = Socket.IsConnected;
+                if(WebSocketConnected){
                     EmitEvent("connect");
                 } else {
                     EmitEvent("disconnect");
@@ -348,61 +178,57 @@ namespace SocketIO
             }
 
             // GC expired acks
-            if(ackList.Count == 0) { return; }
-            if(DateTime.Now.Subtract(ackList[0].time).TotalSeconds < ackExpirationTime){ return; }
-            ackList.RemoveAt(0);
+            if(AckList.Count == 0) { return; }
+            if(DateTime.Now.Subtract(AckList[0].time).TotalSeconds < AckExpirationTime){ return; }
+            AckList.RemoveAt(0);
         }
 
         public void OnDestroy()
         {
-            if (socketThread != null)   { socketThread.Abort(); }
-            if (pingThread != null)     { pingThread.Abort(); }
+            if (SocketThread != null)   { SocketThread.Abort(); }
+            if (PingThread != null)     { PingThread.Abort(); }
         }
 
         public void OnApplicationQuit()
         {
             Close();
         }
-
-        #endregion
-
-        #region Public Interface
         
         public void Connect()
         {
-            connected = true;
+            TransportConnected = true;
 
-            socketThread = new Thread(RunSocketThread);
-            socketThread.Start(ws);
+            SocketThread = new Thread(RunSocketThread);
+            SocketThread.Start(Socket);
 
-            pingThread = new Thread(RunPingThread);
-            pingThread.Start(ws);
+            PingThread = new Thread(RunPingThread);
+            PingThread.Start(Socket);
         }
 
         public void Close()
         {
             EmitClose();
-            connected = false;
+            TransportConnected = false;
         }
 
         public void On(string ev, Action<SocketIOEvent> callback)
         {
-            if (!handlers.ContainsKey(ev)) {
-                handlers[ev] = new List<Action<SocketIOEvent>>();
+            if (!SocketEventHandlers.ContainsKey(ev)) {
+                SocketEventHandlers[ev] = new List<Action<SocketIOEvent>>();
             }
-            handlers[ev].Add(callback);
+            SocketEventHandlers[ev].Add(callback);
         }
 
         public void Off(string ev, Action<SocketIOEvent> callback)
         {
-            if (!handlers.ContainsKey(ev)) {
+            if (!SocketEventHandlers.ContainsKey(ev)) {
                 #if SOCKET_IO_DEBUG
                 debugMethod.Invoke("[SocketIO] No callbacks registered for event: " + ev);
                 #endif
                 return;
             }
 
-            List<Action<SocketIOEvent>> l = handlers [ev];
+            List<Action<SocketIOEvent>> l = SocketEventHandlers [ev];
             if (!l.Contains(callback)) {
                 #if SOCKET_IO_DEBUG
                 debugMethod.Invoke("[SocketIO] Couldn't remove callback action for event: " + ev);
@@ -412,7 +238,7 @@ namespace SocketIO
 
             l.Remove(callback);
             if (l.Count == 0) {
-                handlers.Remove(ev);
+                SocketEventHandlers.Remove(ev);
             }
         }
 
@@ -423,8 +249,8 @@ namespace SocketIO
 
         public void Emit(string ev, Action<JSONObject> action)
         {
-            EmitMessage(++packetId, string.Format("[\"{0}\"]", ev));
-            ackList.Add(new Ack(packetId, action));
+            EmitMessage(++PacketID, string.Format("[\"{0}\"]", ev));
+            AckList.Add(new Ack(PacketID, action));
         }
 
         public void Emit(string ev, JSONObject data)
@@ -434,20 +260,16 @@ namespace SocketIO
 
         public void Emit(string ev, JSONObject data, Action<JSONObject> action)
         {
-            EmitMessage(++packetId, string.Format("[\"{0}\",{1}]", ev, data));
-            ackList.Add(new Ack(packetId, action));
+            EmitMessage(++PacketID, string.Format("[\"{0}\",{1}]", ev, data));
+            AckList.Add(new Ack(PacketID, action));
         }
-
-        #endregion
-
-        #region Private Methods
 
         private void RunSocketThread(object obj)
         {
             WebSocket webSocket = (WebSocket)obj;
-            while(connected){
+            while(TransportConnected){
                 if(webSocket.IsConnected){
-                    Thread.Sleep(reconnectDelay);
+                    Thread.Sleep(ReconnectDelay);
                 } else {
                     webSocket.Connect();
                 }
@@ -459,27 +281,27 @@ namespace SocketIO
         {
             WebSocket webSocket = (WebSocket)obj;
 
-            int timeoutMilis = Mathf.FloorToInt(pingTimeout * 1000);
-            int intervalMilis = Mathf.FloorToInt(pingInterval * 1000);
+            int timeoutMilis = Mathf.FloorToInt(PingTimeout * 1000);
+            int intervalMilis = Mathf.FloorToInt(PingInterval * 1000);
 
             DateTime pingStart;
 
-            while(connected)
+            while(TransportConnected)
             {
-                if(!wsConnected){
-                    Thread.Sleep(reconnectDelay);
+                if(!WebSocketConnected){
+                    Thread.Sleep(ReconnectDelay);
                 } else {
-                    thPinging = true;
-                    thPong =  false;
+                    Pinging = true;
+                    Pong =  false;
                     
 					EmitPacket(new Packet(EnginePacketType.PING, SocketPacketType.UNKNOWN, -1, "/", -1, null));
                     pingStart = DateTime.Now;
                     
-                    while(webSocket.IsConnected && thPinging && (DateTime.Now.Subtract(pingStart).TotalSeconds < timeoutMilis)){
+                    while(webSocket.IsConnected && Pinging && (DateTime.Now.Subtract(pingStart).TotalSeconds < timeoutMilis)){
                         Thread.Sleep(200);
                     }
                     
-                    if(!thPong){
+                    if(!Pong){
                         webSocket.Close();
                     }
 
@@ -506,7 +328,7 @@ namespace SocketIO
             #endif
             
             try {
-                ws.Send(encoder.Encode(packet));
+                Socket.Send(Encode(packet));
             } catch(Exception ex) {
                 Debug.Log(ex.ToString());
                 #if SOCKET_IO_DEBUG
@@ -525,14 +347,14 @@ namespace SocketIO
             #if SOCKET_IO_DEBUG
             debugMethod.Invoke("[SocketIO] Raw message: " + e.Data);
             #endif
-            Packet packet = decoder.Decode(e);
+            Packet packet = Decode(e);
 
             switch (packet.EnginePacketType) {
-                case EnginePacketType.OPEN:     HandleOpen(packet);     break;
-                case EnginePacketType.CLOSE:    EmitEvent("close");     break;
-                case EnginePacketType.PING:     HandlePing();           break;
-                case EnginePacketType.PONG:     HandlePong();           break;
-                case EnginePacketType.MESSAGE:  HandleMessage(packet);  break;
+                case EnginePacketType.OPEN:     HandleOpen(packet);    break;
+                case EnginePacketType.CLOSE:    EmitEvent("close");    break;
+                case EnginePacketType.PING:     HandlePing();          break;
+                case EnginePacketType.PONG:     HandlePong();          break;
+                case EnginePacketType.MESSAGE:  HandleMessage(packet); break;
             }
         }
 
@@ -541,7 +363,7 @@ namespace SocketIO
             #if SOCKET_IO_DEBUG
             debugMethod.Invoke("[SocketIO] Socket.IO sid: " + packet.json["sid"].str);
             #endif
-            sid = packet.PacketData["sid"].str;
+            SocketID = packet.PacketData["sid"].str;
             EmitEvent("open");
         }
 
@@ -552,8 +374,8 @@ namespace SocketIO
 
         private void HandlePong()
         {
-            thPong = true;
-            thPinging = false;
+            Pong = true;
+            Pinging = false;
         }
         
         private void HandleMessage(Packet packet)
@@ -561,9 +383,9 @@ namespace SocketIO
             if(packet.PacketData == null) { return; }
 
             if(packet.SocketPacketType == SocketPacketType.ACK){
-                for(int i = 0; i < ackList.Count; i++){
-                    if(ackList[i].packetId != packet.PacketID){ continue; }
-                    lock(ackQueueLock){ ackQueue.Enqueue(packet); }
+                for(int i = 0; i < AckList.Count; i++){
+                    if(AckList[i].packetId != packet.PacketID){ continue; }
+                    lock(AckQueueLock){ AckQueue.Enqueue(packet); }
                     return;
                 }
 
@@ -574,7 +396,128 @@ namespace SocketIO
 
             if (packet.SocketPacketType == SocketPacketType.EVENT) {
                 SocketIOEvent e = Parse(packet.PacketData);
-                lock(eventQueueLock){ eventQueue.Enqueue(e); }
+                lock(EventQueueLock){ EventQueue.Enqueue(e); }
+            }
+        }
+
+
+        private string Encode(Packet packet)
+        {
+            try
+            {
+                StringBuilder builder = new StringBuilder();
+                
+                // first is type
+                builder.Append((int)packet.EnginePacketType);
+                if(!packet.EnginePacketType.Equals(EnginePacketType.MESSAGE))
+                {
+                    return builder.ToString();
+                }
+                builder.Append((int)packet.SocketPacketType);
+                
+                // attachments if we have them
+                if (packet.SocketPacketType == SocketPacketType.BINARY_EVENT || packet.SocketPacketType == SocketPacketType.BINARY_ACK) 
+                {
+                    builder.Append(packet.PacketAttachmentsCount);
+                    builder.Append('-');
+                }
+                
+                // if we have a namespace other than '/' we append it followed by a comma ','
+                if (!string.IsNullOrEmpty(packet.PacketNamespace) && !packet.PacketNamespace.Equals("/")) 
+                {
+                    builder.Append(packet.PacketNamespace);
+                    builder.Append(',');
+                }
+                
+                // immediately followed by the id
+                if (packet.PacketID > -1) 
+                {
+                    builder.Append(packet.PacketID);
+                }
+                
+                if (packet.PacketData != null && !packet.PacketData.ToString().Equals("null")) 
+                {
+                    builder.Append(packet.PacketData.ToString());
+                }
+                return builder.ToString();
+            } 
+            catch(Exception ex) 
+            {
+                throw new Exception("Packet encoding failed: " + packet ,ex);
+            }
+        }
+
+        private Packet Decode(MessageEventArgs e)
+        {
+            try
+            {
+                int offset = 0;
+                Packet packet = new Packet(EnginePacketType.UNKNOWN, SocketPacketType.UNKNOWN, -1, "/", -1, null);
+                
+                // handle type
+                packet.EnginePacketType = (EnginePacketType)int.Parse(e.Data.Substring(offset, 1));
+                if (packet.EnginePacketType == EnginePacketType.MESSAGE) 
+                {
+                    packet.SocketPacketType = (SocketPacketType)int.Parse(e.Data.Substring(++offset, 1));
+                }
+                if (e.Data.Length <= 2) 
+                {
+                    return packet;
+                }
+
+                // handle namespaces
+                if ('/' == e.Data[offset + 1]) 
+                {
+                    StringBuilder builder = new StringBuilder();
+                    while (offset < e.Data.Length - 1 && e.Data[++offset] != ',') 
+                    {
+                        builder.Append(e.Data[offset]);
+                    }
+                    packet.PacketNamespace = builder.ToString();
+                } 
+                else 
+                {
+                    packet.PacketNamespace = "/";
+                }
+                
+                // look up id
+                char next = e.Data[offset + 1];
+                if (next != ' ' && char.IsNumber(next)) 
+                {
+                    StringBuilder builder = new StringBuilder();
+                    while (offset < e.Data.Length - 1) 
+                    {
+                        char c = e.Data[++offset];
+                        if (char.IsNumber(c)) 
+                        {
+                            builder.Append(c);
+                        } 
+                        else 
+                        {
+                            --offset;
+                            break;
+                        }
+                    }
+                    packet.PacketID = int.Parse(builder.ToString());
+                }
+                
+                // look up json data
+                if (++offset < e.Data.Length - 1) 
+                {
+                    try 
+                    {
+                        packet.PacketData = new JSONObject(e.Data.Substring(offset));
+                    } 
+                    catch (Exception ex) 
+                    {
+                        Debug.LogException(ex);
+                    }
+                }
+                return packet;
+            } 
+            catch(Exception ex) 
+            {
+                throw new Exception("Packet decoding failed: " + e.Data, ex);
             }
         }
 
@@ -617,8 +560,8 @@ namespace SocketIO
 
         private void EmitEvent(SocketIOEvent ev)
         {
-            if (!handlers.ContainsKey(ev.EventName)) { return; }
-            foreach (Action<SocketIOEvent> handler in this.handlers[ev.EventName]) {
+            if (!SocketEventHandlers.ContainsKey(ev.EventName)) { return; }
+            foreach (Action<SocketIOEvent> handler in this.SocketEventHandlers[ev.EventName]) {
                 try{
                     handler(ev);
                 } catch(Exception ex){
@@ -633,15 +576,13 @@ namespace SocketIO
         private void InvokeAck(Packet packet)
         {
             Ack ack;
-            for(int i = 0; i < ackList.Count; i++){
-                if(ackList[i].packetId != packet.PacketID){ continue; }
-                ack = ackList[i];
-                ackList.RemoveAt(i);
+            for(int i = 0; i < AckList.Count; i++){
+                if(AckList[i].packetId != packet.PacketID){ continue; }
+                ack = AckList[i];
+                AckList.RemoveAt(i);
                 ack.Invoke(packet.PacketData);
                 return;
             }
         }
-
-        #endregion
     }
 }
