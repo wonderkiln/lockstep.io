@@ -105,7 +105,7 @@ public class lockstep_io : MonoBehaviour
 	
 	private void LockstepSync ()
 	{
-		JSONObject ntp = JSONObject.Create(JSONObject.Type.OBJECT);
+		JSONObject ntp = JSONObject.Create(JSONObject.JSONType.OBJECT);
 		ntp.AddField("t0", (double)LocalNow);
 		Socket.Emit("lockstep.io:sync", ntp);
 		Socket.Emit("lockstep.io:seed", new JSONObject());

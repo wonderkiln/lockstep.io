@@ -594,17 +594,17 @@ namespace SocketIO
             {
                 throw new Exception("Invalid number of parameters received: " + json.Count);
             }
-            else if (json[0].type != JSONObject.Type.STRING) 
+            else if (json[0].type != JSONObject.JSONType.STRING) 
             {
-                throw new Exception("Invalid parameter type. " + json[0].type + " received while expecting " + JSONObject.Type.STRING);
+                throw new Exception("Invalid parameter type. " + json[0].type + " received while expecting " + JSONObject.JSONType.STRING);
             }
             else if (json.Count == 1) 
             {
                 return new SocketIOEvent(json[0].str, null);
             } 
-            else if (json[1].type != JSONObject.Type.OBJECT)
+            else if (json[1].type != JSONObject.JSONType.OBJECT)
             {
-                throw new Exception("Invalid argument type. " + json[1].type + " received while expecting " + JSONObject.Type.OBJECT);
+                throw new Exception("Invalid argument type. " + json[1].type + " received while expecting " + JSONObject.JSONType.OBJECT);
             }
             else 
             {
