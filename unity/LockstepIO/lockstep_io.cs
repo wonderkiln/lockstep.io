@@ -8,22 +8,22 @@ using System.Text;
 [RequireComponent (typeof (SocketIOComponent))]
 public class lockstep_io : MonoBehaviour 
 {
-	private SocketIOComponent Socket;
-	private List<long> SyncOffsets;
-	private List<long> SyncRoundTrips;
+	private SocketIOComponent            Socket;
+	private List<long>                   SyncOffsets;
+	private List<long>                   SyncRoundTrips;
 	private Dictionary<long, JSONObject> CommandQueue;
-	private float SyncRateSec = 1f / 15f;
-	private int SyncPoolSize = 15;
-	public delegate void ExecuteCommandSignature (JSONObject Command);
-	public ExecuteCommandSignature ExecuteCommandFunction;
-	public string LastLockstepReadyString;
-	public long LastServerNow;
-	public long LastLocalNow;
-	public long LastSyncOffset;
-	public long LastSyncRoundTrip;
-	public bool LastSyncStatus;
-	public long CommandDelay;
-	public long LocalNow 
+	private float                        SyncRateSec = 1f / 15f;
+	private int                          SyncPoolSize = 15;
+	public delegate void                 ExecuteCommandSignature (JSONObject Command);
+	public ExecuteCommandSignature       ExecuteCommandFunction;
+	public string                        LastLockstepReadyString;
+	public long                          LastServerNow;
+	public long                          LastLocalNow;
+	public long                          LastSyncOffset;
+	public long                          LastSyncRoundTrip;
+	public bool                          LastSyncStatus;
+	public long                          CommandDelay;
+	public long                          LocalNow 
 	{
 		get
 		{
@@ -74,15 +74,27 @@ public class lockstep_io : MonoBehaviour
 		}
 	}
 	
-	public void Start()
+	public void Start ()
 	{
+		// First call Sync(executeCallbacK)
 		Sync ((JSONObject j) => {
+			// Debug log executed commands
 			Debug.Log(j.ToString());
 		});
 	}
-
 	
-	public void Sync(ExecuteCommandSignature executeCommandFunction)
+	public void Update ()
+	{
+		if (Input.GetKeyDown(KeyCode.Space))
+		{
+			JSONObject j = new JSONObject();
+			j.AddField("my test data", 420);
+			j.AddField("move unit 234 to x, y", "see easy peasy");
+			IssueCommand(j);
+		}
+	}
+	
+	public void Sync (ExecuteCommandSignature executeCommandFunction)
 	{
 		ExecuteCommandFunction = executeCommandFunction;
 		SyncOffsets = new List<long>();
@@ -96,11 +108,10 @@ public class lockstep_io : MonoBehaviour
 		InvokeRepeating("LockstepSync", 0f, SyncRateSec);
 	}
 	
-	private void OnLockstepSeed(SocketIOEvent evt)
+	private void OnLockstepSeed (SocketIOEvent evt)
 	{
 		int randomSeed = (int)evt.EventData.GetField("randomSeed").n;
 		UnityEngine.Random.seed = randomSeed;
-		Debug.Log ("Seed: " + randomSeed); 
 	}
 	
 	private void LockstepSync ()
@@ -165,14 +176,13 @@ public class lockstep_io : MonoBehaviour
 			
 		}
 		LastLockstepReadyString = debugText;
-		Debug.Log(LastLockstepReadyString);
 	}
 
 	private void OnCommandIssue(SocketIOEvent evt)
 	{
 		long atLockstep = (long)evt.EventData.GetField("atLockstep").n;
 		long delay = (atLockstep - LockStepTime);
-		if (delay < 0)
+		if (delay <= 0)
 		{
 			throw new Exception("Missed Event (LAG)");
 		}
