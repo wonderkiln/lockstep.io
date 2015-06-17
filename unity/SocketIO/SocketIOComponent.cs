@@ -1,5 +1,4 @@
-﻿//#define SOCKET_IO_DEBUG           // Uncomment this for debug
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -61,50 +60,43 @@ namespace SocketIO
 
     public class SocketIOEvent
     {
-        public string name { get; set; }
-        
-        public JSONObject data { get; set; }
-        
-        public SocketIOEvent(string name) : this(name, null) { }
-        
-        public SocketIOEvent(string name, JSONObject data)
+        public string     EventName;
+        public JSONObject EventData;
+
+        public SocketIOEvent(string eventName, JSONObject eventData)
         {
-            this.name = name;
-            this.data = data;
+            this.EventName = eventName;
+            this.EventData = eventData;
         }
 
         public override string ToString()
         {
-            return string.Format("[SocketIOEvent: name={0}, data={1}]", name, data);
+            return string.Format("[SocketIOEvent: name={0}, data={1}]", EventName, EventData);
         }
     }
     
     public class Packet
     {
-        public EnginePacketType enginePacketType;
-        public SocketPacketType socketPacketType;
+        public EnginePacketType EnginePacketType;
+        public SocketPacketType SocketPacketType;
+        public int              PacketAttachmentsCount;
+        public string           PacketNamespace;
+        public int              PacketID;
+        public JSONObject       PacketData;
         
-        public int attachments;
-        public string nsp;
-        public int id;
-        public JSONObject json;
-        
-        public Packet() : this(EnginePacketType.UNKNOWN, SocketPacketType.UNKNOWN, -1, "/", -1, null) { }
-        public Packet(EnginePacketType enginePacketType) : this(enginePacketType, SocketPacketType.UNKNOWN, -1, "/", -1, null) { }
-        
-        public Packet(EnginePacketType enginePacketType, SocketPacketType socketPacketType, int attachments, string nsp, int id, JSONObject json)
+        public Packet(EnginePacketType enginePacketType, SocketPacketType socketPacketType, int packetAttachementsCount, string packetNamespace, int packetID, JSONObject packetData)
         {
-            this.enginePacketType = enginePacketType;
-            this.socketPacketType = socketPacketType;
-            this.attachments = attachments;
-            this.nsp = nsp;
-            this.id = id;
-            this.json = json;
+            this.EnginePacketType = enginePacketType;
+            this.SocketPacketType = socketPacketType;
+            this.PacketAttachmentsCount = packetAttachementsCount;
+            this.PacketNamespace = packetNamespace;
+            this.PacketID = packetID;
+            this.PacketData = packetData;
         }
         
         public override string ToString()
         {
-            return string.Format("[Packet: enginePacketType={0}, socketPacketType={1}, attachments={2}, nsp={3}, id={4}, json={5}]", enginePacketType, socketPacketType, attachments, nsp, id, json);
+            return string.Format("[Packet: enginePacketType={0}, socketPacketType={1}, attachments={2}, nsp={3}, id={4}, json={5}]", EnginePacketType, SocketPacketType, PacketAttachmentsCount, PacketNamespace, PacketID, PacketData);
         }
     }
     
@@ -121,33 +113,33 @@ namespace SocketIO
                 StringBuilder builder = new StringBuilder();
                 
                 // first is type
-                builder.Append((int)packet.enginePacketType);
-                if(!packet.enginePacketType.Equals(EnginePacketType.MESSAGE)){
+                builder.Append((int)packet.EnginePacketType);
+                if(!packet.EnginePacketType.Equals(EnginePacketType.MESSAGE)){
                     return builder.ToString();
                 }
                 
-                builder.Append((int)packet.socketPacketType);
+                builder.Append((int)packet.SocketPacketType);
                 
                 // attachments if we have them
-                if (packet.socketPacketType == SocketPacketType.BINARY_EVENT || packet.socketPacketType == SocketPacketType.BINARY_ACK) {
-                    builder.Append(packet.attachments);
+                if (packet.SocketPacketType == SocketPacketType.BINARY_EVENT || packet.SocketPacketType == SocketPacketType.BINARY_ACK) {
+                    builder.Append(packet.PacketAttachmentsCount);
                     builder.Append('-');
                 }
                 
                 // if we have a namespace other than '/'
                 // we append it followed by a comma ','
-                if (!string.IsNullOrEmpty(packet.nsp) && !packet.nsp.Equals("/")) {
-                    builder.Append(packet.nsp);
+                if (!string.IsNullOrEmpty(packet.PacketNamespace) && !packet.PacketNamespace.Equals("/")) {
+                    builder.Append(packet.PacketNamespace);
                     builder.Append(',');
                 }
                 
                 // immediately followed by the id
-                if (packet.id > -1) {
-                    builder.Append(packet.id);
+                if (packet.PacketID > -1) {
+                    builder.Append(packet.PacketID);
                 }
                 
-                if (packet.json != null && !packet.json.ToString().Equals("null")) {
-                    builder.Append(packet.json.ToString());
+                if (packet.PacketData != null && !packet.PacketData.ToString().Equals("null")) {
+                    builder.Append(packet.PacketData.ToString());
                 }
                 
                 #if SOCKET_IO_DEBUG
@@ -173,16 +165,16 @@ namespace SocketIO
                 #endif
                 
                 string data = e.Data;
-                Packet packet = new Packet();
+				Packet packet = new Packet(EnginePacketType.UNKNOWN, SocketPacketType.UNKNOWN, -1, "/", -1, null);
                 int offset = 0;
                 
                 // look up packet type
                 int enginePacketType = int.Parse(data.Substring(offset, 1));
-                packet.enginePacketType = (EnginePacketType)enginePacketType;
+                packet.EnginePacketType = (EnginePacketType)enginePacketType;
                 
                 if (enginePacketType == (int)EnginePacketType.MESSAGE) {
                     int socketPacketType = int.Parse(data.Substring(++offset, 1));
-                    packet.socketPacketType = (SocketPacketType)socketPacketType;
+                    packet.SocketPacketType = (SocketPacketType)socketPacketType;
                 }
                 
                 // connect message properly parsed
@@ -199,9 +191,9 @@ namespace SocketIO
                     while (offset < data.Length - 1 && data[++offset] != ',') {
                         builder.Append(data [offset]);
                     }
-                    packet.nsp = builder.ToString();
+                    packet.PacketNamespace = builder.ToString();
                 } else {
-                    packet.nsp = "/";
+                    packet.PacketNamespace = "/";
                 }
                 
                 // look up id
@@ -217,7 +209,7 @@ namespace SocketIO
                             break;
                         }
                     }
-                    packet.id = int.Parse(builder.ToString());
+                    packet.PacketID = int.Parse(builder.ToString());
                 }
                 
                 // look up json data
@@ -226,7 +218,7 @@ namespace SocketIO
                         #if SOCKET_IO_DEBUG
                         Debug.Log("[SocketIO] Parsing JSON: " + data.Substring(offset));
                         #endif
-                        packet.json = new JSONObject(data.Substring(offset));
+                        packet.PacketData = new JSONObject(data.Substring(offset));
                     } catch (Exception ex) {
                         Debug.LogException(ex);
                     }
@@ -480,7 +472,7 @@ namespace SocketIO
                     thPinging = true;
                     thPong =  false;
                     
-                    EmitPacket(new Packet(EnginePacketType.PING));
+					EmitPacket(new Packet(EnginePacketType.PING, SocketPacketType.UNKNOWN, -1, "/", -1, null));
                     pingStart = DateTime.Now;
                     
                     while(webSocket.IsConnected && thPinging && (DateTime.Now.Subtract(pingStart).TotalSeconds < timeoutMilis)){
@@ -504,7 +496,7 @@ namespace SocketIO
         private void EmitClose()
         {
             EmitPacket(new Packet(EnginePacketType.MESSAGE, SocketPacketType.DISCONNECT, 0, "/", -1, new JSONObject("")));
-            EmitPacket(new Packet(EnginePacketType.CLOSE));
+			EmitPacket(new Packet(EnginePacketType.CLOSE, SocketPacketType.UNKNOWN, -1, "/", -1, null));
         }
 
         private void EmitPacket(Packet packet)
@@ -535,7 +527,7 @@ namespace SocketIO
             #endif
             Packet packet = decoder.Decode(e);
 
-            switch (packet.enginePacketType) {
+            switch (packet.EnginePacketType) {
                 case EnginePacketType.OPEN:     HandleOpen(packet);     break;
                 case EnginePacketType.CLOSE:    EmitEvent("close");     break;
                 case EnginePacketType.PING:     HandlePing();           break;
@@ -549,13 +541,13 @@ namespace SocketIO
             #if SOCKET_IO_DEBUG
             debugMethod.Invoke("[SocketIO] Socket.IO sid: " + packet.json["sid"].str);
             #endif
-            sid = packet.json["sid"].str;
+            sid = packet.PacketData["sid"].str;
             EmitEvent("open");
         }
 
         private void HandlePing()
         {
-            EmitPacket(new Packet(EnginePacketType.PONG));
+			EmitPacket(new Packet(EnginePacketType.PONG, SocketPacketType.UNKNOWN, -1, "/", -1, null));
         }
 
         private void HandlePong()
@@ -566,11 +558,11 @@ namespace SocketIO
         
         private void HandleMessage(Packet packet)
         {
-            if(packet.json == null) { return; }
+            if(packet.PacketData == null) { return; }
 
-            if(packet.socketPacketType == SocketPacketType.ACK){
+            if(packet.SocketPacketType == SocketPacketType.ACK){
                 for(int i = 0; i < ackList.Count; i++){
-                    if(ackList[i].packetId != packet.id){ continue; }
+                    if(ackList[i].packetId != packet.PacketID){ continue; }
                     lock(ackQueueLock){ ackQueue.Enqueue(packet); }
                     return;
                 }
@@ -580,8 +572,8 @@ namespace SocketIO
                 #endif
             }
 
-            if (packet.socketPacketType == SocketPacketType.EVENT) {
-                SocketIOEvent e = Parse(packet.json);
+            if (packet.SocketPacketType == SocketPacketType.EVENT) {
+                SocketIOEvent e = Parse(packet.PacketData);
                 lock(eventQueueLock){ eventQueue.Enqueue(e); }
             }
         }
@@ -598,7 +590,7 @@ namespace SocketIO
             }
             
             if (json.Count == 1) {
-                return new SocketIOEvent(json[0].str);
+                return new SocketIOEvent(json[0].str, null);
             } 
             
             if (json[1].type != JSONObject.Type.OBJECT) {
@@ -620,13 +612,13 @@ namespace SocketIO
 
         private void EmitEvent(string type)
         {
-            EmitEvent(new SocketIOEvent(type));
+            EmitEvent(new SocketIOEvent(type, null));
         }
 
         private void EmitEvent(SocketIOEvent ev)
         {
-            if (!handlers.ContainsKey(ev.name)) { return; }
-            foreach (Action<SocketIOEvent> handler in this.handlers[ev.name]) {
+            if (!handlers.ContainsKey(ev.EventName)) { return; }
+            foreach (Action<SocketIOEvent> handler in this.handlers[ev.EventName]) {
                 try{
                     handler(ev);
                 } catch(Exception ex){
@@ -642,10 +634,10 @@ namespace SocketIO
         {
             Ack ack;
             for(int i = 0; i < ackList.Count; i++){
-                if(ackList[i].packetId != packet.id){ continue; }
+                if(ackList[i].packetId != packet.PacketID){ continue; }
                 ack = ackList[i];
                 ackList.RemoveAt(i);
-                ack.Invoke(packet.json);
+                ack.Invoke(packet.PacketData);
                 return;
             }
         }

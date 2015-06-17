@@ -98,7 +98,7 @@ public class lockstep_io : MonoBehaviour
 	
 	private void OnLockstepSeed(SocketIOEvent evt)
 	{
-		int randomSeed = (int)evt.data.GetField("randomSeed").n;
+		int randomSeed = (int)evt.EventData.GetField("randomSeed").n;
 		UnityEngine.Random.seed = randomSeed;
 		Debug.Log ("Seed: " + randomSeed); 
 	}
@@ -114,8 +114,8 @@ public class lockstep_io : MonoBehaviour
 	private void OnLockstepSync(SocketIOEvent evt)
 	{
 		LastLocalNow = LocalNow;
-		long t0 = (long)evt.data.GetField("t0").n;
-		long t1 = (long)evt.data.GetField("t1").n;
+		long t0 = (long)evt.EventData.GetField("t0").n;
+		long t1 = (long)evt.EventData.GetField("t1").n;
 		long diff = LastLocalNow - t1 - ((LastLocalNow - t0) / 2);
 		long syncRoundTrip = LastLocalNow - t0;
 		SyncOffsets.Insert(0, diff);
@@ -145,8 +145,8 @@ public class lockstep_io : MonoBehaviour
 	
 	private void OnLockstepReady(SocketIOEvent evt)
 	{
-		CommandDelay = (long)evt.data.GetField("commandDelay").n;
-		JSONObject clients = evt.data.GetField("clients");
+		CommandDelay = (long)evt.EventData.GetField("commandDelay").n;
+		JSONObject clients = evt.EventData.GetField("clients");
 		string format = "000000000000";
 		int formatLength = format.Length + 1;
 		string debugText = "ID".PadLeft(formatLength)        + " "    +
@@ -170,14 +170,14 @@ public class lockstep_io : MonoBehaviour
 
 	private void OnCommandIssue(SocketIOEvent evt)
 	{
-		long atLockstep = (long)evt.data.GetField("atLockstep").n;
+		long atLockstep = (long)evt.EventData.GetField("atLockstep").n;
 		long delay = (atLockstep - LockStepTime);
 		if (delay < 0)
 		{
 			throw new Exception("Missed Event (LAG)");
 		}
 		float lockstepDelaySec = (float)delay / 1000f;
-		CommandQueue.Add(atLockstep, evt.data);
+		CommandQueue.Add(atLockstep, evt.EventData);
 		Invoke("OnCommandExecute", lockstepDelaySec);
 	}
 	
