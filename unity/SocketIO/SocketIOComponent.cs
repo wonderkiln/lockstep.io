@@ -3,12 +3,63 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using System.Text;
 using UnityEngine;
 using WebSocketSharp;
 using WebSocketSharp.Net;
 
 namespace SocketIO
 {
+	public enum SocketPacketType
+	{
+		UNKNOWN         = -1,
+		CONNECT      	=  0,
+		DISCONNECT      =  1,
+		EVENT          	=  2,
+		ACK             =  3,
+		ERROR         	=  4,
+		BINARY_EVENT 	=  5,
+		BINARY_ACK   	=  6,
+		CONTROL         =  7
+	}
+	
+	public enum EnginePacketType
+	{
+		UNKNOWN	 = -1,
+		OPEN 	 =  0,
+		CLOSE 	 =  1,
+		PING 	 =  2,
+		PONG	 =  3,
+		MESSAGE	 =  4,
+		UPGRADE  =  5,
+		NOOP   	 =  6
+	}
+
+	public class Ack
+	{
+		public int packetId;
+		public DateTime time;
+		
+		private System.Action<JSONObject> action;
+		
+		public Ack(int packetId, System.Action<JSONObject> action)
+		{
+			this.packetId = packetId;
+			this.time = DateTime.Now;
+			this.action = action;
+		}
+		
+		public void Invoke(JSONObject ev)
+		{
+			action.Invoke(ev);
+		}
+		
+		public override string ToString()
+		{
+			return string.Format("[Ack: packetId={0}, time={1}, action={2}]", packetId, time, action);
+		}
+	}
+
 	public class SocketIOException  : Exception
 	{
 		public SocketIOException(){}		
@@ -35,24 +86,199 @@ namespace SocketIO
 			return string.Format("[SocketIOEvent: name={0}, data={1}]", name, data);
 		}
 	}
+	
+	public class Packet
+	{
+		public EnginePacketType enginePacketType;
+		public SocketPacketType socketPacketType;
+		
+		public int attachments;
+		public string nsp;
+		public int id;
+		public JSONObject json;
+		
+		public Packet() : this(EnginePacketType.UNKNOWN, SocketPacketType.UNKNOWN, -1, "/", -1, null) { }
+		public Packet(EnginePacketType enginePacketType) : this(enginePacketType, SocketPacketType.UNKNOWN, -1, "/", -1, null) { }
+		
+		public Packet(EnginePacketType enginePacketType, SocketPacketType socketPacketType, int attachments, string nsp, int id, JSONObject json)
+		{
+			this.enginePacketType = enginePacketType;
+			this.socketPacketType = socketPacketType;
+			this.attachments = attachments;
+			this.nsp = nsp;
+			this.id = id;
+			this.json = json;
+		}
+		
+		public override string ToString()
+		{
+			return string.Format("[Packet: enginePacketType={0}, socketPacketType={1}, attachments={2}, nsp={3}, id={4}, json={5}]", enginePacketType, socketPacketType, attachments, nsp, id, json);
+		}
+	}
+	
+	public class Parser
+	{
+		public SocketIOEvent Parse(JSONObject json)
+		{
+			if (json.Count < 1 || json.Count > 2) {
+				throw new SocketIOException("Invalid number of parameters received: " + json.Count);
+			}
+			
+			if (json[0].type != JSONObject.Type.STRING) {
+				throw new SocketIOException("Invalid parameter type. " + json[0].type + " received while expecting " + JSONObject.Type.STRING);
+			}
+			
+			if (json.Count == 1) {
+				return new SocketIOEvent(json[0].str);
+			} 
+			
+			if (json[1].type != JSONObject.Type.OBJECT) {
+				throw new SocketIOException("Invalid argument type. " + json[1].type + " received while expecting " + JSONObject.Type.OBJECT);
+			}
+			
+			return new SocketIOEvent(json[0].str, json[1]);
+		}
+	}
+	
+	public class Encoder
+	{
+		public string Encode(Packet packet)
+		{
+			try
+			{
+				#if SOCKET_IO_DEBUG
+				Debug.Log("[SocketIO] Encoding: " + packet.json);
+				#endif
+				
+				StringBuilder builder = new StringBuilder();
+				
+				// first is type
+				builder.Append((int)packet.enginePacketType);
+				if(!packet.enginePacketType.Equals(EnginePacketType.MESSAGE)){
+					return builder.ToString();
+				}
+				
+				builder.Append((int)packet.socketPacketType);
+				
+				// attachments if we have them
+				if (packet.socketPacketType == SocketPacketType.BINARY_EVENT || packet.socketPacketType == SocketPacketType.BINARY_ACK) {
+					builder.Append(packet.attachments);
+					builder.Append('-');
+				}
+				
+				// if we have a namespace other than '/'
+				// we append it followed by a comma ','
+				if (!string.IsNullOrEmpty(packet.nsp) && !packet.nsp.Equals("/")) {
+					builder.Append(packet.nsp);
+					builder.Append(',');
+				}
+				
+				// immediately followed by the id
+				if (packet.id > -1) {
+					builder.Append(packet.id);
+				}
+				
+				if (packet.json != null && !packet.json.ToString().Equals("null")) {
+					builder.Append(packet.json.ToString());
+				}
+				
+				#if SOCKET_IO_DEBUG
+				Debug.Log("[SocketIO] Encoded: " + builder);
+				#endif
+				
+				return builder.ToString();
+				
+			} catch(Exception ex) {
+				throw new SocketIOException("Packet encoding failed: " + packet ,ex);
+			}
+		}
+	}
+	
+	public class Decoder
+	{
+		public Packet Decode(MessageEventArgs e)
+		{
+			try
+			{
+				#if SOCKET_IO_DEBUG
+				Debug.Log("[SocketIO] Decoding: " + e.Data);
+				#endif
+				
+				string data = e.Data;
+				Packet packet = new Packet();
+				int offset = 0;
+				
+				// look up packet type
+				int enginePacketType = int.Parse(data.Substring(offset, 1));
+				packet.enginePacketType = (EnginePacketType)enginePacketType;
+				
+				if (enginePacketType == (int)EnginePacketType.MESSAGE) {
+					int socketPacketType = int.Parse(data.Substring(++offset, 1));
+					packet.socketPacketType = (SocketPacketType)socketPacketType;
+				}
+				
+				// connect message properly parsed
+				if (data.Length <= 2) {
+					#if SOCKET_IO_DEBUG
+					Debug.Log("[SocketIO] Decoded: " + packet);
+					#endif
+					return packet;
+				}
+				
+				// look up namespace (if any)
+				if ('/' == data [offset + 1]) {
+					StringBuilder builder = new StringBuilder();
+					while (offset < data.Length - 1 && data[++offset] != ',') {
+						builder.Append(data [offset]);
+					}
+					packet.nsp = builder.ToString();
+				} else {
+					packet.nsp = "/";
+				}
+				
+				// look up id
+				char next = data [offset + 1];
+				if (next != ' ' && char.IsNumber(next)) {
+					StringBuilder builder = new StringBuilder();
+					while (offset < data.Length - 1) {
+						char c = data [++offset];
+						if (char.IsNumber(c)) {
+							builder.Append(c);
+						} else {
+							--offset;
+							break;
+						}
+					}
+					packet.id = int.Parse(builder.ToString());
+				}
+				
+				// look up json data
+				if (++offset < data.Length - 1) {
+					try {
+						#if SOCKET_IO_DEBUG
+						Debug.Log("[SocketIO] Parsing JSON: " + data.Substring(offset));
+						#endif
+						packet.json = new JSONObject(data.Substring(offset));
+					} catch (Exception ex) {
+						Debug.LogException(ex);
+					}
+				}
+				
+				#if SOCKET_IO_DEBUG
+				Debug.Log("[SocketIO] Decoded: " + packet);
+				#endif
+				
+				return packet;
+				
+			} catch(Exception ex) {
+				throw new SocketIOException("Packet decoding failed: " + e.Data ,ex);
+			}
+		}
+	}
 
 
 	public class SocketIOComponent : MonoBehaviour
 	{
-	
-		public enum SocketPacketType
-		{
-			UNKNOWN         = -1,
-			CONNECT      	=  0,
-			DISCONNECT      =  1,
-			EVENT          	=  2,
-			ACK             =  3,
-			ERROR         	=  4,
-			BINARY_EVENT 	=  5,
-			BINARY_ACK   	=  6,
-			CONTROL         =  7
-		}
-	
 
 		#region Public Properties
 	
