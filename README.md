@@ -2,23 +2,16 @@
 
 A drop in Unity and NodeJS, Socket.IO based "Lockstep" implementation to support rapid development of online games in Unity.
 
-## Server Setup (NodeJS)
+#### What is Lockstepping?
 
-```sh
-npm install lockstepio (not reserved yet...)
-```
+Starcraft, Age of Empires and Warcraft 3 all use deterministic lockstepping - not this particular library, rather the same idea. Lockstepping forces all user input to be broadcast over the network to be executed roughly 200ms into the future; Literally when you click to move a unit, there will always be a 200ms delay before the unit responds to your input. This 200ms, known as the "latency window" provides enough time for that command to reach all other networked players, then for that command to execute in synch across everyone's simulation of the game.
 
-```javascript
-var lockstepio = require('lockstepio');
+#### What is Deterministic Lockstepping?
 
-... // fancy code here
-```
+Physics simulation in games is actually a pretty "fuzzy" science, where numbers don't really need to be dead accurate, just "close enough" to look real. Normally this isn't a problem, but when we need to run multiple identical simulations on different machines and hardware the "fuzz" starts to become a serious problem.
 
-## Client(s) Setup (Unity)
+#### Is Unity Deterministic?
 
-Lockstep.IO is available for Unity from the Asset Store (search for: Lockstep.IO), as well as from this github repository. The Unity Asset Store version is considered to be the stable release, running the code contained in the `master` branch of this repository.
+#### Is Unreal Deterministic?
 
-Drag the Lockstep.IO Prefab into your scene, then use the asset inspector to configure the plugin.
-
-
-/// yadda yadda issue execute, code samples, gifs, etc.
+No. Although we don't currently use the Unreal Engine, Unreal does also suffer from non-deterministic physics.
