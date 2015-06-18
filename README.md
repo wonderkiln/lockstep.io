@@ -2,6 +2,8 @@
 
 A drop in Unity and NodeJS, Socket.IO based "Lockstep" implementation to support rapid development of online games in Unity.
 
+**This open source project is still in very early alpha development and is by no means to be considered production ready despite it's current usability! Security, scalability and stability are less of a present development concern than the ease of use to the average game developer with little or no extra boilerplate involved.**
+
 #### Quick Start: Connecting NodeJS and Unity
 
 1. Install NodeJS from https://nodejs.org/ if you don't already have the latest version.
@@ -64,14 +66,12 @@ Adding networked commands is as easy as sending them through the network with Is
 
 
 
----- flack below
 
-
-#### What is Lockstepping?
+#### Technical Discussion: What is Lockstepping?
 
 Starcraft, Age of Empires and Warcraft 3 all use lockstepping - not this particular library, rather the same idea. Lockstepping forces all user input to be broadcast over the network to be executed roughly 200ms into the future; Literally when you click to move a unit, there will always be a 200ms delay before the unit responds to your input. This 200ms, known as the "latency window" provides enough time for that command to reach all other networked players, then for that command to execute in synch across everyone's simulation of the game.
 
-#### What is Deterministic Lockstepping?
+#### Technical Discussion: What is Deterministic Lockstepping?
 
 Physics simulation in *most* games is a "fuzzy" science, where numbers don't always need to be dead accurate, just "close enough" to look realistic. Normally this isn't a problem and the speed trade off pays for itself, but when we need to run multiple identical simulations on different machines (ie. a multiplayer game), that "fuzziness" starts to become a serious issue: 
 
@@ -83,8 +83,24 @@ A Deterministic Physics Simulation, where there is literally zero fuziness and e
 
 
 
-#### Is Unity Deterministic?
+#### Technical Discussion: Is Unity Deterministic?
 
-#### Is Unreal Deterministic?
+The random number generator in Unity can be made to be deterministic by shared seeding, which LockstepIO already does for you upon synchronizing lockstep with the server. This isn't the real problem though.
 
-No. Although we don't currently use the Unreal Engine, Unreal does also suffer from non-deterministic physics.
+Unity uses two physics engines internally, one for 2D and one for 3D - both of these engines run on floating point calculations; that is to say: they use floats to do their math. Floats are a great way to store numbers fairly accuratly up to a few decimal places, but unfortunately "fairly accurately" means different CPU hardware can use different algorithms for floating point calculations.
+
+If we tell two different computers to add `1.00000001 + 1.00000001`, one computer will likely tell us the answer is `2`, while the other computer tells us the answer is `2.00000002` or even something you wouldn't naturally expect like `2.0000145` (an artifact of low floating point accuracy). 
+
+In game physics, a "close enough" answer is faster to calculate, and for almost all circumstances far more than enough accuracy! However, determinism says that these tiny floating point differences can't exist between machines or the state will almost immedately fall out of sync thatnks to the Chaos Effect, also known as the Butterfly Effect.
+
+So as of writing this, no, Unity is not deterministic because of the floating point physics engine. This problem could be corrected with much slower deterministic virtualized floats (similar to what Java can do with special compiler flags), whereby floating point calculations happen at the slower software layer rather than at the much faster the hardware accellerated layer.
+
+#### Technical Discussion: Is Unreal Deterministic?
+
+Unreal unfornationaly appears to suffer from the same problem as Unity, whereby physics are only "deterministic enough" to allow frame by frame synchronization of all game details with minimal "wobble". This works great for up to 16 game objects in realtime, but as that number of game objects grow the amount of data being transported quickly explodes out of control.
+
+For example: in a deterministic lockstep simulation, a unit could move across an entire map by sending a single packet "move unit X across the map". Because the simulation is deterministic and lockstep gaurantees execution time, each computer finds the exact same path for the unit across the map without communicating any further.
+
+In a non deterministic lockstep simulation, a unit needs to send packets each frame declaring it's position on the "host" machine "unit X is at 21, 20", "unit x is at 21, 21", "unit x is at 21, 22", etc. Instead of one packet to move a single unit we could potentially need millions.
+
+Most first person shooters don't require true determinism because they can handle realtime positioning of 8 or so units no problem, but real time strategies featuring more than 100 units on the map will absolutely require lockstep determinism to work on todays internet connections (even the fastest, or local connections choke out at 200 or less units).
