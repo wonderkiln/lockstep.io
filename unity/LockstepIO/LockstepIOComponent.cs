@@ -6,7 +6,7 @@ using System;
 using System.Text;
 
 [RequireComponent (typeof (SocketIOComponent))]
-public class lockstep_io : MonoBehaviour 
+public class LockstepIOComponent : MonoBehaviour 
 {
 	private SocketIOComponent            Socket;
 	private List<long>                   SyncOffsets;
