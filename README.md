@@ -8,17 +8,35 @@ A drop in Unity and NodeJS, Socket.IO based "Lockstep" implementation to support
 
 2. Create a new folder for your project, then from the command line initialize the project using:
 
-```
+```sh
 npm init .
 ```
 
 3. NPM will walk you through setting up the project details, and create a `package.json` file for you with the project details and dependencies.
 
-4. Add LockstepIO as a dependency to your NodeJS project by entering the following into the command line:
+4. Add LockstepIO as a dependency to your NodeJS project:
 
-```
+```sh
 npm install lockstep.io --save
 ```
+
+5. Run the LockstepIO development server locally:
+
+```
+node ./node_modules/lockstep.io/nodejs/server.js
+```
+
+6. If everything worked correctly your local LockstepIO server should be running:
+
+```
+Lockstep.IO: Listening on port 80!
+Connect to Unity locally with the following URL:
+ws://127.0.0.1:80/socket.io/?EIO=4&transport=websocket
+```
+
+7. Minimize your server window (the server will only run while open), and either open or create a new Unity project. Navigate to `./node_modules/lockstep.io/unity/` and drag the `LockstepIO` folder and associated `LockstepIO.meta` file into your Unity project library.
+
+8. Add the `LockstepIOComponent` to a single game object which will act as your game's connection to the server.
 
 
 #### What is Lockstepping?
