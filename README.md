@@ -4,6 +4,9 @@ A drop in Unity and NodeJS, Socket.IO based "Lockstep" implementation to support
 
 **This open source project is still in very early alpha development and is by no means to be considered production ready despite its current usability! Security, scalability, and stability are less of a present development concern than the ease of use to the average game developer with little or no extra boilerplate involved.**
 
+#### Quick Start: Video Introduction/Tutorial
+You can watch a quick video tutorial of how to Lockstep.IO on Youtube => http://youtu.be/HN_oLZy5tYc
+
 #### Quick Start: Connecting NodeJS and Unity
 
 1. Install NodeJS from https://nodejs.org/ if you don't already have the latest version.
