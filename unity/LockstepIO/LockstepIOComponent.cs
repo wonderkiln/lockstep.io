@@ -14,14 +14,12 @@ public class LockstepIOComponent : MonoBehaviour
 	private Dictionary<long, JSONObject> CommandQueue;
 	private float                        SyncRateSec = 1f / 15f;
 	private int                          SyncPoolSize = 15;
-	public delegate void                 ExecuteCommandSignature (JSONObject Command);
-	public ExecuteCommandSignature       ExecuteCommandFunction;
 	public string                        LastLockstepReadyString;
 	public long                          LastServerNow;
 	public long                          LastLocalNow;
 	public long                          LastSyncOffset;
 	public long                          LastSyncRoundTrip;
-	public bool                          LastSyncStatus;
+	public bool                          LockstepReady;
 	public long                          CommandDelay;
 	public long                          LocalNow 
 	{
@@ -76,27 +74,49 @@ public class LockstepIOComponent : MonoBehaviour
 	
 	public void Start ()
 	{
-		// First call Sync(executeCallbacK)
-		Sync ((JSONObject j) => {
-			// Debug log executed commands
-			Debug.Log(j.ToString());
-		});
+		// Synchronize lockstep with the server first
+		Sync ();
 	}
 	
 	public void Update ()
 	{
-		if (Input.GetKeyDown(KeyCode.Space))
+		// Ensure lockstep is ready before issuing commands
+		if (LockstepReady)
 		{
-			JSONObject j = new JSONObject();
-			j.AddField("my test data", 420);
-			j.AddField("move unit 234 to x, y", "see easy peasy");
-			IssueCommand(j);
+			// On spacebar
+			if (Input.GetKeyDown(KeyCode.Space))
+			{
+				// Create a fake command, commands can be any JSON object
+				// after it is issued, it will be handed back to your code as is
+				// from the server in the ExecuteCommand function
+				JSONObject j = new JSONObject();
+				j.AddField("my test data", 420);
+				j.AddField("move unit 234 to x, y", "see easy peasy");
+				
+				// Issue the fake command
+				IssueCommand(j);
+			}
 		}
 	}
 	
-	public void Sync (ExecuteCommandSignature executeCommandFunction)
+	public void IssueCommand(JSONObject Command)
 	{
-		ExecuteCommandFunction = executeCommandFunction;
+		// Attach the command delay automatically to the command
+		Command.AddField("atLockstep", (double)(LockStepTime + CommandDelay));
+		// Send the command to the server
+		Socket.Emit("lockstep.io:cmd:issue", Command);
+	}
+	
+	public void ExecuteCommand(JSONObject Command)
+	{
+		// Commands come back from the server, and are executed here
+		Debug.Log("Execute Command: " + Command.ToString());
+		// Add your own custom code to attach commands to GameObjects
+	}
+	
+	
+	public void Sync ()
+	{
 		SyncOffsets = new List<long>();
 		SyncRoundTrips = new List<long>();
 		CommandQueue = new Dictionary<long, JSONObject>();
@@ -107,6 +127,7 @@ public class LockstepIOComponent : MonoBehaviour
 		Socket.On ("lockstep.io:cmd:issue", OnCommandIssue);
 		InvokeRepeating("LockstepSync", 0f, SyncRateSec);
 	}
+	
 	
 	private void OnLockstepSeed (SocketIOEvent evt)
 	{
@@ -142,8 +163,8 @@ public class LockstepIOComponent : MonoBehaviour
 		LastSyncOffset = SyncOffset;
 		LastSyncRoundTrip = SyncRoundTrip;
 		LastServerNow = t1;
-		LastSyncStatus = IsSynched;
-		if (LastSyncStatus)
+		LockstepReady = IsSynched;
+		if (LockstepReady)
 		{
 			JSONObject ready = new JSONObject();
 			ready.AddField("localNow", (double)LastLocalNow);
@@ -208,12 +229,8 @@ public class LockstepIOComponent : MonoBehaviour
 		
 		JSONObject closestCommand = CommandQueue[closest];
 		CommandQueue.Remove(closest);
-		ExecuteCommandFunction(closestCommand);
+		ExecuteCommand(closestCommand);
 	}
 	
-	public void IssueCommand(JSONObject Command)
-	{
-		Command.AddField("atLockstep", (double)(LockStepTime + CommandDelay));
-		Socket.Emit("lockstep.io:cmd:issue", Command);
-	}
+	
 }
