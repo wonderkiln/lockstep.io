@@ -11,41 +11,41 @@ You can watch a quick video tutorial of how to use Lockstep.IO on Youtube => htt
 
 1. Install NodeJS from https://nodejs.org/ if you don't already have the latest version.
 
-2. Create a new folder for your project, then from the command line initialize the project using:
+1. Create a new folder for your project, then from the command line initialize the project using:
 
-```sh
-npm init .
-```
+	```sh
+	npm init .
+	```
 
-3. NPM will walk you through setting up the project details, and create a `package.json` file for you with the project details and dependencies.
+1. NPM will walk you through setting up the project details, and create a `package.json` file for you with the project details and dependencies.
 
-4. Add LockstepIO as a dependency to your NodeJS project:
+1. Add LockstepIO as a dependency to your NodeJS project:
 
-```sh
-npm install lockstep.io --save
-```
+	```sh
+	npm install lockstep.io --save
+	```
+	
+1. Run the LockstepIO development server locally:
 
-5. Run the LockstepIO development server locally:
+	```sh
+	node ./node_modules/lockstep.io/nodejs/server.js
+	```
+	
+1. If everything worked correctly your local LockstepIO server should be running:
 
-```sh
-node ./node_modules/lockstep.io/nodejs/server.js
-```
+	```sh
+	Lockstep.IO: Listening on port 80!
+	Connect to Unity locally with the following URL:
+	ws://127.0.0.1:80/socket.io/?EIO=4&transport=websocket
+	```
+	
+1. Minimize your server window (the server will only run while open), and either open or create a new Unity project. Navigate to `./node_modules/lockstep.io/unity/` and drag the `LockstepIO` folder and associated `LockstepIO.meta` file into your Unity project library.
 
-6. If everything worked correctly your local LockstepIO server should be running:
+1. Add the `LockstepIOComponent` to a single game object which will act as your game's connection to the server, a 	`SocketIOComponent` will be automatically added for you.
 
-```sh
-Lockstep.IO: Listening on port 80!
-Connect to Unity locally with the following URL:
-ws://127.0.0.1:80/socket.io/?EIO=4&transport=websocket
-```
+1. Click play and wait a moment for the `LockstepIOComponent` and `SocketIOComponent` to connect and synchronize Lockstep timing with the server. Both scripts come default to auto-connect and sync with a local server.
 
-7. Minimize your server window (the server will only run while open), and either open or create a new Unity project. Navigate to `./node_modules/lockstep.io/unity/` and drag the `LockstepIO` folder and associated `LockstepIO.meta` file into your Unity project library.
-
-8. Add the `LockstepIOComponent` to a single game object which will act as your game's connection to the server, a 	`SocketIOComponent` will be automatically added for you.
-
-9. Click play and wait a moment for the `LockstepIOComponent` and `SocketIOComponent` to connect and synchronize Lockstep timing with the server. Both scripts come default to auto-connect and sync with a local server.
-
-10. Assuming everything is running correctly and no firewalls are blocking the network traffic, the `Lockstep Ready` flag will become checked within a few seconds to signal lockstep synchronization. The `LastLockstepReady` string will contain debug information about all clients connected to the server.
+1. Assuming everything is running correctly and no firewalls are blocking the network traffic, the `Lockstep Ready` flag will become checked within a few seconds to signal lockstep synchronization. The `LastLockstepReady` string will contain debug information about all clients connected to the server.
 
 #### Quick Start: The Issue Execute Command Cycle
 
