@@ -1,6 +1,6 @@
 {
   "name": "lockstep.io",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A drop in Unity and NodeJS, Socket.IO based \"Lockstep\" implementation to support rapid development of online games in Unity.",
   "main": "./nodejs/lockstep.io.js",
   "scripts": {
