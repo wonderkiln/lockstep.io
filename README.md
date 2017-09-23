@@ -4,9 +4,6 @@ A drop in Unity and NodeJS, Socket.IO based "Lockstep" implementation to support
 
 **This open source project is still in very early alpha development and is by no means to be considered production ready despite its current usability! Security, scalability, and stability are less of a present development concern than the ease of use to the average game developer with little or no extra boilerplate involved.**
 
-#### Quick Start: Video Introduction/Tutorial
-You can watch a quick video tutorial of how to use Lockstep.IO on Youtube => http://youtu.be/HN_oLZy5tYc
-
 #### Quick Start: Connecting NodeJS and Unity
 
 1. Install NodeJS from https://nodejs.org/ if you don't already have the latest version.
@@ -108,8 +105,4 @@ In a non-deterministic lockstep simulation, a unit needs to send packets each fr
 
 Most first person shooters don't require true determinism because they can handle realtime positioning of 8 or so units without problem, but real time strategies featuring more than 100 units on the map will absolutely require lockstep determinism to work on today's internet connections (even the fastest or local connections choke out at 200 or less units).
 
-## Brought to you by [Inkhorn Games](http://inkhorn.co)
-Developed for our upcoming title Battle Brigades ([subreddit](http://www.reddit.com/r/battlebrigades)).
-
-Connect with us:
-[Facebook](https://www.facebook.com/inkhorngames) | [Twitter](https://twitter.com/inkhorngames) | [Youtube](http://youtube.com/inkhorncompany)
+## Brought to you by [WonderKiln](https://www.wonderkiln.com)

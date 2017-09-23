@@ -1,8 +1,8 @@
-Copyright Inkhorn Games and other contributors, https://inkhorn.co/
+Copyright WonderKiln and other contributors, https://www.wonderkiln.com
 
 This software consists of voluntary contributions made by many
 individuals. For exact contribution history, see the revision history
-available at https://github.com/InkhornGames/lockstep.io
+available at https://github.com/wonderkiln/lockstep.io
 
 The following license applies to all parts of this software except as
 documented below:
@@ -11,7 +11,7 @@ documented below:
 
 The MIT License (MIT)
 
-Copyright (c) [2015] [Inkhorn Games]
+Copyright (c) [2017] [WonderKiln, Inc]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
