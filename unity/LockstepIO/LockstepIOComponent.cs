@@ -140,7 +140,6 @@ public class LockstepIOComponent : MonoBehaviour
 		JSONObject ntp = JSONObject.Create(JSONObject.JSONType.OBJECT);
 		ntp.AddField("t0", (double)LocalNow);
 		Socket.Emit("lockstep.io:sync", ntp);
-		Socket.Emit("lockstep.io:seed", new JSONObject());
 	}
 	
 	private void OnLockstepSync(SocketIOEvent evt)
