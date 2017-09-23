@@ -79,7 +79,7 @@ Physics simulation in *most* games is a "fuzzy" science, where numbers don't alw
 If in Player A's simulation the character just dodged the bullet in time, but in Player B's simulation the character didn't dodge that same bullet in time - strictly due to fuzziness - our two simulations are no longer in sync and we aren't sharing a game state any longer. We call this non-deterministic physics.
 ```
 
-A Deterministic Physics Simulation, where there is literally zero fuziness and even the random number generators are seeded together can in turn reveal
+A Deterministic Physics Simulation, where there is literally zero fuziness and even the random number generators are seeded together can in turn reveal non-deterministic-like behavior. 
 
 
 
